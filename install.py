@@ -70,7 +70,10 @@ def printParserError (parser, message) :
 
 
 def silentInstall (installer_path, installation_path) :
+    print "$> %s %s %s %s" % (uninstaller_path, "/S", "/NCRC", "/D=" + installation_path)
     subprocess.call ([installer_path, "/S", "/NCRC", "/D=" + installation_path])
+    # some time to recover
+    time.sleep (5)
 
 
 def macroInstall (installer_path, installation_path) :
@@ -109,7 +112,19 @@ def macroUninstall (uninstaller_path) :
 
 
 def silentUninstall (uninstaller_path) :
+    print "$> %s %s" % (uninstaller_path, "/S")
     subprocess.call ([uninstaller_path, "/S"])
+    # some time to recover
+    time.sleep (5)
+
+
+def runProgram (filename) :
+    print "$> %s" % filename
+    out, err = Popen ([filename], stdout=PIPE).communicate ()
+    print out, err
+    writeToFile ('output.log', out)
+    writeToFile ('error.log', err)
+    return (out, err)
 
 
 if __name__ == "__main__" :
@@ -197,11 +212,7 @@ if __name__ == "__main__" :
         print "RUNNING"
         bin = os.path.join (installation_path, "bin", "flow123d.exe")
         filename = bin if perform_run_in else "flow123dd"
-        print filename
-        out, err = Popen ([filename], stdout=PIPE).communicate ()
-        print out, err
-        writeToFile ('output.log', out)
-        writeToFile ('error.log', err)
+        out, err = runProgram (filename)
 
         if str (out).find ("This is Flow123d, version") is -1 :
             print "Output failed"
