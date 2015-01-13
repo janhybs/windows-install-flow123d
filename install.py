@@ -12,11 +12,10 @@ from optparse import OptionParser
 url = "http://bacula.nti.tul.cz/~jan.brezina/flow123d_packages/1.8.0_master/flow123d_1.8.0_master_windows_x86_"
 
 
-def downloadFile (url, save_loc='.', save_as="installer.exe") :
+def downloadFile (url, save_as="installer.exe") :
     # get filename and prepare location
     file_name = url.split ('/')[-1]
-    location = os.path.join (save_loc, save_as)
-    location = os.path.abspath (location)
+    location = os.path.abspath (save_as)
     dirs = os.path.split (location)[0]
 
     if not os.path.exists (dirs) :
@@ -165,7 +164,7 @@ if __name__ == "__main__" :
     # architecture check and paths
     if str (options.arch) in ('32', '64') :
         installation_path = "c:\\package_tests\\cygwin" + str (options.arch) + "\\"
-        installer_path = os.path.abspath ("installer.exe")
+        installer_path = os.path.abspath ("Installer_" + str (options.arch) + ".exe")
         uninstaller_path = os.path.abspath (os.path.join (installation_path, "Uninstall.exe"))
         macro_path = "path" + str (options.arch) + ".ahk"
         arch = int (options.arch)
@@ -183,7 +182,7 @@ if __name__ == "__main__" :
         print "DOWNLOADING"
         print url
         try :
-            downloadFile (url, save_as="installer.exe")
+            downloadFile (url, save_as=installer_path)
             print "\n Downloaded"
         except urllib2.HTTPError as err :
             print 'Cannot download file %s' % url
