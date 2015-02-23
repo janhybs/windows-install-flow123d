@@ -125,6 +125,13 @@ def runProgram (filename) :
     writeToFile ('error.log', err)
     return (out, err)
 
+def tryRemove (installer_path):
+    # deleting installer
+    try:
+        os.remove (installer_path)
+        return True
+    except Error as err:
+        return False
 
 if __name__ == "__main__" :
 
@@ -231,8 +238,15 @@ if __name__ == "__main__" :
             print "Macro uninstall..."
             macroUninstall (uninstaller_path)
 
-        # deleting installer
-        os.remove (installer_path)
+        tryno = 1
+        while tryno < 5:
+            print "Trying remove installer_path '%s' (%s. try)" % (installer_path, str(tryno))
+            if tryRemove(installer_path):
+                tryno = 6**6
+            else:
+                tryno += 1
+                # sleep for a while to recover
+                time.sleep (2)
 
         print "uninstallation complete"
         if not os.path.exists (installation_path) :
