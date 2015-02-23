@@ -240,7 +240,7 @@ if __name__ == "__main__" :
 
         tryno = 1
         while tryno < 5:
-            print "Trying remove installer_path '%s' (%s. try)" % (installer_path, str(tryno))
+            print "Trying to remove installer '%s' (%s. try)" % (installer_path, str(tryno))
             if tryRemove(installer_path):
                 tryno = 6**6
             else:
