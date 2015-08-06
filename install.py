@@ -117,9 +117,9 @@ def silentUninstall (uninstaller_path) :
     time.sleep (5)
 
 
-def runProgram (filename) :
+def runProgram (filename, shell=False) :
     print "$> %s" % filename
-    out, err = Popen ([filename], stdout=PIPE).communicate ()
+    out, err = Popen ([filename], stdout=PIPE, shell=shell).communicate ()
     print out, err
     writeToFile ('output.log', out)
     writeToFile ('error.log', err)
@@ -130,7 +130,7 @@ def tryRemove (installer_path):
     try:
         os.remove (installer_path)
         return True
-    except Error as err:
+    except Exception as err:
         return False
 
 if __name__ == "__main__" :
@@ -164,6 +164,7 @@ if __name__ == "__main__" :
         perform_uninstall = options.mode == "uninstall"
         perform_run_in = options.mode == "run_inside"
         perform_run_out = options.mode == "run_outside"
+        perform_python_test = options.mode == "python_test"
     else :
         printParserError (parser, "Unsupported mode '%s'" % str (options.arch))
         sys.exit (0)
@@ -213,6 +214,56 @@ if __name__ == "__main__" :
         else :
             print "Installation FAILED"
             sys.exit (1)
+
+    if perform_python_test:
+        print "TESTING PYTHON"
+
+        test_dir = os.path.abspath(os.path.join(installation_path, 'tests', '03_transport_small_12d'))
+        print 'cd to ' + test_dir
+        os.chdir(test_dir)
+
+        print 'running'
+        out, err = runProgram (os.path.join('..', '..', 'bin', 'flow123d') + ' -i input -o output -s flow_vtk.con')
+        output_dir = os.path.join(test_dir, 'output')
+
+        if not os.path.exists(output_dir):
+            print "folder {:s} doesn't exists".format(output_dir)
+            sys.exit(1)
+
+        files = os.listdir(output_dir)
+        import re
+        json_match = False
+        txt_match = False
+        for file in files:
+            if re.match(r'profiler_info_.*\.json', file):
+                json_match = file
+                continue
+
+            if re.match(r'profiler_info_.*\.txt', file):
+                txt_match = file
+                continue
+
+        if json_match:
+            print 'profiler file generated: {:s}'.format(json_match)
+            print 'content: '
+            with open(os.path.join(output_dir, json_match), 'r') as fp:
+                print fp.read()
+        else:
+            print 'profiler was NOT file generated'
+            sys.exit(1)
+
+
+        if txt_match:
+            print 'python converted json file: {:s}'.format(txt_match)
+            print 'content: '
+            with open(os.path.join(output_dir, txt_match), 'r') as fp:
+                print fp.read()
+        else:
+            print 'python did NOT generate txt file from json file'
+            sys.exit(1)
+        sys.exit(0)
+
+
 
     if perform_run_in or perform_run_out :
         print "RUNNING"
