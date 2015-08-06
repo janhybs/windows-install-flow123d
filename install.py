@@ -223,12 +223,20 @@ if __name__ == "__main__" :
         os.chdir(test_dir)
 
         print 'running'
-        out, err = runProgram (os.path.join('..', '..', 'bin', 'flow123d') + ' -i input -o output -s flow_vtk.con')
+        flow_bin = os.path.join('..', '..', 'bin', 'flow123d.exe')
+        flow_param = '-i input -o output -s flow_vtk.con'
+        command = 'dir \n cd "{:s}" \n dir \n "{:s}" {:s}'.format (test_dir, flow_bin, flow_param)
+        with open('tmp.bat', 'w') as fp:
+                fp.write (command)
+        
+        out, err = runProgram ('tmp.bat')
         output_dir = os.path.join(test_dir, 'output')
 
         if not os.path.exists(output_dir):
             print "folder {:s} doesn't exists".format(output_dir)
             sys.exit(1)
+        else:
+            print "output folder created"
 
         files = os.listdir(output_dir)
         import re
@@ -250,6 +258,7 @@ if __name__ == "__main__" :
                 print fp.read()
         else:
             print 'profiler was NOT file generated'
+            print 'dir listing: ' + '\n'.join (files)
             sys.exit(1)
 
 
@@ -260,6 +269,7 @@ if __name__ == "__main__" :
                 print fp.read()
         else:
             print 'python did NOT generate txt file from json file'
+            print 'dir listing: ' + '\n'.join (files)
             sys.exit(1)
         sys.exit(0)
 
