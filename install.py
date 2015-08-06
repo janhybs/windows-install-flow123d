@@ -137,7 +137,7 @@ if __name__ == "__main__" :
 
     parser = OptionParser ()
     parser.add_option ("-m", "--mode", dest="mode",
-                       help="Specify value 'install' or 'uninstall' or 'run-outside' or 'run-inside'")
+                       help="Specify value 'install' or 'uninstall' or 'run-outside' or 'run-inside' or 'python_test'")
     parser.add_option ("-a", "--arch", dest="arch",
                        help="Specify value '32' or '64' for desired architecture type")
     parser.add_option ("-u", "--url", dest="url",
@@ -159,7 +159,7 @@ if __name__ == "__main__" :
         printParserError (parser, 'Architecture not specified!')
 
     # mode check
-    if str (options.mode) in ('install', 'uninstall', 'run_inside', 'run_outside') :
+    if str (options.mode) in ('install', 'uninstall', 'run_inside', 'run_outside', 'python_test') :
         perform_install = options.mode == "install"
         perform_uninstall = options.mode == "uninstall"
         perform_run_in = options.mode == "run_inside"
