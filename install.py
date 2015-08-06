@@ -9,7 +9,7 @@ from optparse import OptionParser
 
 
 # http://bacula.nti.tul.cz/~jan.brezina/flow123d_packages/1.8.0_master/flow123d_1.8.0_master_windows_x86_32.exe
-url = "http://bacula.nti.tul.cz/~jan.brezina/flow123d_packages/1.8.0_master/flow123d_1.8.0_master_windows_x86_"
+url = "http://bacula.nti.tul.cz/~jan.brezina/flow123d_packages/{:s}/flow123d_{:s}_windows_x86_{:s}.exe"
 
 
 def downloadFile (url, save_as="installer.exe") :
@@ -140,6 +140,8 @@ if __name__ == "__main__" :
                        help="Specify value 'install' or 'uninstall' or 'run-outside' or 'run-inside' or 'python_test'")
     parser.add_option ("-a", "--arch", dest="arch",
                        help="Specify value '32' or '64' for desired architecture type")
+    parser.add_option ("-b", "--branch", dest="branch",
+                       help="Specify branch name such as 0.0.master", default='0.0.master')
     parser.add_option ("-u", "--url", dest="url",
                        help="Optional url for downloading packgage")
     parser.add_option ("-i", "--not-silent", action="store_false", dest="silent", default=True,
@@ -184,7 +186,8 @@ if __name__ == "__main__" :
     if options.url is not None :
         url = options.url
     else :
-        url = url + str (arch) + ".exe"
+        print 'branch: {:s}'.format (options.branch)
+        url = url.format (options.branch, options.branch, str(arch))
 
     if perform_install :
         print "DOWNLOADING"
