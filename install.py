@@ -126,9 +126,10 @@ def runProgram (filename, shell=False) :
     return (out, err)
 
 def tryRemove (installer_path):
+    import shutil
     # deleting installer
     try:
-        os.remove (installer_path)
+        shutil.rmtree (installer_path)
         return True
     except Exception as err:
         return False
@@ -317,6 +318,7 @@ if __name__ == "__main__" :
             print "Uninstallation successful"
         else :
             print "Uninstallation FAILED"
+            print "Installation path still exists {:s}".format (installation_path)
             sys.exit (1)
 
     sys.exit (0)
