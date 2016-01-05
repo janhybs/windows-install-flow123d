@@ -147,6 +147,7 @@ def action_install(plat=None, x64=None, ext=None, **kwargs):
 def action_run_flow(plat=None, x64=None, ext=None, **kwargs):
     plat, x64, ext, folder, location = fix_args(plat, x64, ext)
 
+    flow_loc = None
     if plat == 'linux':
         files = os.listdir(folder)
         for f in files:
@@ -158,6 +159,10 @@ def action_run_flow(plat=None, x64=None, ext=None, **kwargs):
         flow_loc = os.path.join(folder, 'bin', 'flow123d.exe')
 
     # cross-platform run
+    if not flow_loc:
+        print 'Could not find flow123d binary location'
+        return 1
+
     process, stdout, stderr = run_command([flow_loc, ' --version'])
     if process.returncode != 0:
         return check_error(process, stdout, stderr)
@@ -201,6 +206,7 @@ parser = OptionParser()
 parser.add_option('-m', '--mode', dest='actions', default='download,install,run,python_test,uninstall',
                   help='Specify what should be done, subset of following (install, run, python_test, uninstall)')
 parser.add_option('-p', '--platform', dest='platform', default=None, help='Enforce platform (linux, windows, cygwin)')
+parser.add_option('-k', '--keep', dest='keep', default=True, help='Abort execution on error', action='store_false')
 parser.add_option('-a', '--arch', dest='x64', default=None, help='Enforce bit size (64 or 32)')
 parser.add_option('-s', '--server', dest='server', default='http://flow.nti.tul.cz/packages',
                   help='Specify server from which packages will be downloaded, default value is %default')
@@ -226,11 +232,19 @@ action_args = dict(
 
 actions = str(options.actions).split(',')
 for action in actions:
-    print '=' * 80
-    print 'Performing action {action}'.format(action=action)
-    print '-' * 80
+    print '=' * 100
+    print 'Performing action {action:>82}'.format(action=action.upper())
+    print '-' * 100
     action_handler = action_map.get(action.strip())
     if action_handler:
-        action_handler(**action_args)
+        result = action_handler(**action_args)
     else:
+        result = 0
         print 'not implemented yet'
+    print 'Action {action} exited with {result}\n'.format(action=action.upper(), result=result)
+
+    if result != 0 and not options.keep:
+        print 'Action {action} failed, exiting script'.format(action=action.upper())
+        exit(result)
+
+exit(0)
