@@ -65,10 +65,13 @@ def run_command(cmd, **kwargs):
     full_kwargs = default_kwargs.copy()
     full_kwargs.update(kwargs)
 
-    full_cmd = cmd.format(**full_kwargs)
-    print "Running: {full_cmd}".format(full_cmd=full_cmd)
+    if type(cmd) is list:
+        full_cmd = cmd
+    else:
+        full_cmd = [cmd.format(**full_kwargs)]
+    print "Running: {full_cmd}".format(full_cmd=str(full_cmd))
 
-    process = Popen([full_cmd], stdout=PIPE, stderr=PIPE, shell=True)
+    process = Popen(full_cmd, stdout=PIPE, stderr=PIPE, shell=True)
     stdout, stderr = process.communicate()
 
     return process, stdout, stderr
@@ -124,7 +127,7 @@ def action_install(plat=None, x64=None, ext=None):
 
     if plat == 'windows':
         installer_location = os.path.abspath(location)
-        command = '{location} /S /NCRC /D={folder}'.format(location=installer_location, folder=folder)
+        command = '{location} /S /NCRC /D={folder}'.format(location=installer_location, folder=os.path.abspath(folder))
         print 'Installing...'
         process, stdout, stderr = run_command(command)
         check_error(process, stdout, stderr)
