@@ -131,8 +131,8 @@ def action_install(plat=None, x64=None, ext=None):
         installer_location = os.path.abspath(location)
         command = [
             installer_location,
-            '/S', '/NCRC', '/D=',
-            os.path.abspath(folder)
+            '/S', '/NCRC',
+            '/D=' + os.path.abspath(folder)
         ]
         print 'Installing...'
         process, stdout, stderr = run_command(command)
@@ -140,6 +140,7 @@ def action_install(plat=None, x64=None, ext=None):
         if process.returncode != 0:
             return process.returncode
         print 'Installing done'
+        return 0
 
 
 def action_run_flow(plat=None, x64=None, ext=None):
@@ -148,22 +149,25 @@ def action_run_flow(plat=None, x64=None, ext=None):
     if plat == 'linux':
         files = os.listdir(folder)
         for f in files:
-
             if f.lower().find('flow123d') >= 0 and os.path.isdir(os.path.join(folder, f)):
                 flow_loc = os.path.join(folder, f, 'bin', 'flow123d')
-                process, stdout, stderr = run_command(flow_loc + ' --version')
+                break
 
-                if process.returncode != 0:
-                    return check_error(process, stdout, stderr)
+    if plat == 'windows':
+        flow_loc = os.path.join(folder, 'bin', 'flow123d.exe')
 
-                check_error(process, stdout, stderr)
+    # cross-platform run
+    process, stdout, stderr = run_command([flow_loc, ' --version'])
+    if process.returncode != 0:
+        return check_error(process, stdout, stderr)
 
-                out = stderr + stdout
-                if out.find('This is Flow123d') >= 0:
-                    print 'String "{s}" found'.format(s='This is Flow123d')
-                    return 0
-                print process.returncode
-
+    # successful execution, but was is correct
+    check_error(process, stdout, stderr)
+    out = stderr + stdout
+    if out.find('This is Flow123d') >= 0:
+        print 'String "{s}" found'.format(s='This is Flow123d')
+        return 0
+    print process.returncode
 
 def action_uninstall(plat=None, x64=None, ext=None):
     plat, x64, ext, folder, location = fix_args(plat, x64, ext)
