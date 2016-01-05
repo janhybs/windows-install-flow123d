@@ -132,8 +132,6 @@ def tryRemove (installer_path):
         shutil.rmtree (installer_path)
         return True
     except Exception as err:
-        print "Remove error: "
-        print err
         return False
 
 if __name__ == "__main__" :
@@ -300,26 +298,20 @@ if __name__ == "__main__" :
 
         if options.silent :
             print "Silent uninstall..."
-            if os.path.exists (uninstaller_path):
-                silentUninstall (uninstaller_path)
-            else:
-                print "Uninstall.exe no longer exists, removing rest of flow123"
+            silentUninstall (uninstaller_path)
         else :
             print "Macro uninstall..."
             macroUninstall (uninstaller_path)
 
-        if os.path.exists (installer_path):
-            print "Removing installer {:s}".format(installer_path)
-            os.remove (installer_path)
-        else:
-            print "Installer no longer exists"
-            
-            
-        if os.path.exists (installation_path):
-            print "Removing installation folder {:s}".format(installation_path)
-            print tryRemove(installation_path)
-        else:
-            print "Installaiton folder no longer exists"
+        tryno = 1
+        while tryno < 5:
+            print "Trying to remove installer '%s' (%s. try)" % (installer_path, str(tryno))
+            if tryRemove(installer_path):
+                tryno = 6**6
+            else:
+                tryno += 1
+                # sleep for a while to recover
+                time.sleep (2)
 
         print "uninstallation complete"
         if not os.path.exists (installation_path) :
