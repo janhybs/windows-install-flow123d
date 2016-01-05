@@ -1,11 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 # author:   Jan Hybs
+
+import sys, os, platform, re, urllib, tarfile, shutil, time
+from subprocess import Popen, PIPE
 from optparse import OptionParser
-
-import sys, os, platform, re, urllib2, urllib, tarfile, shutil
-from subprocess import Popen, PIPE, STDOUT
-
 
 class Command(object):
     LS = 'ls'
@@ -193,9 +192,14 @@ def action_uninstall(plat=None, x64=None, ext=None, **kwargs):
         if process.returncode != 0:
             return process.returncode
 
+    # add sleep since windows spawns child which is not bound by parent
+    # so exiting parent does not exit children as well
+    time.sleep(5)
+    
     shutil.rmtree(os.path.abspath(folder), True)
     if os.path.exists(folder):
         print 'Uninstallation not successful!'
+        print os.listdir(folder)
         return 1
 
     print 'Uninstallation successful!'
