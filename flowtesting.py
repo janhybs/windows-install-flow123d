@@ -81,19 +81,19 @@ def run_command(cmd, **kwargs):
 
 def check_error(process, stdout, stderr):
     if process.returncode != 0:
-        print 'Error while execution!'
+        print 'Error while execution! (exited with {code})'.format(code=process.returncode)
         if stderr.split():
             print 'Stderr: \n{stderr}'.format(stderr=padding(stderr))
             if stdout.split():
                 print 'Stdout: \n{stdout}'.format(stdout=padding(stdout))
             return process.returncode
 
-        print 'Execution successful!'
-        if stderr.split():
-            print 'Stderr: \n{stderr}'.format(stderr=padding(stderr))
-        if stdout.split():
-            print 'Stdout: \n{stdout}'.format(stdout=padding(stdout))
-        return 0
+    print 'Execution successful!'
+    if stderr.split():
+        print 'Stderr: \n{stderr}'.format(stderr=padding(stderr))
+    if stdout.split():
+        print 'Stdout: \n{stdout}'.format(stdout=padding(stdout))
+    return 0
 
 
 def action_download_package(server='http://flow.nti.tul.cz/packages', version='0.0.master',
@@ -163,16 +163,15 @@ def action_run_flow(plat=None, x64=None, ext=None, **kwargs):
         return 1
 
     process, stdout, stderr = run_command([flow_loc, ' --version'])
-    if process.returncode != 0:
-        return check_error(process, stdout, stderr)
 
-    # successful execution, but was is correct
+    # check output to determine success or failure
     check_error(process, stdout, stderr)
     out = stderr + stdout
     if out.find('This is Flow123d') >= 0:
         print 'String "{s}" found'.format(s='This is Flow123d')
         return 0
-    print process.returncode
+    print 'String "{s}" not found in output'.format(s='This is Flow123d')
+    return 1
 
 
 def action_uninstall(plat=None, x64=None, ext=None, **kwargs):
