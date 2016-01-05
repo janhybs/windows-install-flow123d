@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 # author:   Jan Hybs
+from optparse import OptionParser
 
 import sys, os, platform, re, urllib2, urllib, tarfile, shutil
 from subprocess import Popen, PIPE, STDOUT
@@ -97,7 +98,7 @@ def check_error(process, stdout, stderr):
 
 
 def action_download_package(server='http://flow.nti.tul.cz/packages', version='0.0.master',
-                            plat=None, x64=None, ext=None):
+                            plat=None, x64=None, ext=None, **kwargs):
     plat, x64, ext, folder, location = fix_args(plat, x64, ext)
 
     fmt_object = dict(
@@ -117,7 +118,7 @@ def action_download_package(server='http://flow.nti.tul.cz/packages', version='0
     return 0
 
 
-def action_install(plat=None, x64=None, ext=None):
+def action_install(plat=None, x64=None, ext=None, **kwargs):
     plat, x64, ext, folder, location = fix_args(plat, x64, ext)
 
     if plat == 'linux':
@@ -143,7 +144,7 @@ def action_install(plat=None, x64=None, ext=None):
         return 0
 
 
-def action_run_flow(plat=None, x64=None, ext=None):
+def action_run_flow(plat=None, x64=None, ext=None, **kwargs):
     plat, x64, ext, folder, location = fix_args(plat, x64, ext)
 
     if plat == 'linux':
@@ -169,7 +170,8 @@ def action_run_flow(plat=None, x64=None, ext=None):
         return 0
     print process.returncode
 
-def action_uninstall(plat=None, x64=None, ext=None):
+
+def action_uninstall(plat=None, x64=None, ext=None, **kwargs):
     plat, x64, ext, folder, location = fix_args(plat, x64, ext)
 
     print 'Uninstalling flow123d...'
@@ -194,9 +196,41 @@ def action_uninstall(plat=None, x64=None, ext=None):
     print 'Uninstallation successful!'
     return 0
 
-plat = None
 
-print action_download_package(plat=plat)
-print action_install(plat=plat)
-print action_run_flow(plat=plat)
-print action_uninstall(plat=plat)
+parser = OptionParser()
+parser.add_option('-m', '--mode', dest='actions', default='download,install,run,python_test,uninstall',
+                  help='Specify what should be done, subset of following (install, run, python_test, uninstall)')
+parser.add_option('-p', '--platform', dest='platform', default=None, help='Enforce platform (linux, windows, cygwin)')
+parser.add_option('-a', '--arch', dest='x64', default=None, help='Enforce bit size (64 or 32)')
+parser.add_option('-s', '--server', dest='server', default='http://flow.nti.tul.cz/packages',
+                  help='Specify server from which packages will be downloaded, default value is %default')
+parser.add_option('-v', '--version', dest='version', default='0.0.master',
+                  help='Specify web version identifier which will be part of download url, default value is %default')
+options, args = parser.parse_args()
+
+action_map = dict(
+    download=action_download_package,
+    install=action_install,
+    run=action_run_flow,
+    python_test=None,
+    uninstall=action_uninstall
+)
+
+action_args = dict(
+    server=options.server,
+    version=options.version,
+    plat=options.platform,
+    x64=options.x64,
+    ext=None
+)
+
+actions = str(options.actions).split(',')
+for action in actions:
+    print '=' * 80
+    print 'Performing action {action}'.format(action=action)
+    print '-' * 80
+    action_handler = action_map.get(action.strip())
+    if action_handler:
+        action_handler(**action_args)
+    else:
+        print 'not implemented yet'
