@@ -67,11 +67,13 @@ def run_command(cmd, **kwargs):
 
     if type(cmd) is list:
         full_cmd = cmd
+        shell = True
     else:
         full_cmd = [cmd.format(**full_kwargs)]
+        shell = False
     print "Running: {full_cmd}".format(full_cmd=str(full_cmd))
 
-    process = Popen(full_cmd, stdout=PIPE, stderr=PIPE, shell=True)
+    process = Popen(full_cmd, stdout=PIPE, stderr=PIPE, shell=shell)
     stdout, stderr = process.communicate()
 
     return process, stdout, stderr
@@ -127,7 +129,11 @@ def action_install(plat=None, x64=None, ext=None):
 
     if plat == 'windows':
         installer_location = os.path.abspath(location)
-        command = '{location} /S /NCRC /D={folder}'.format(location=installer_location, folder=os.path.abspath(folder))
+        command = [
+            installer_location,
+            '/S', '/NCRC', '/D=',
+            os.path.abspath(folder)
+        ]
         print 'Installing...'
         process, stdout, stderr = run_command(command)
         check_error(process, stdout, stderr)
@@ -170,7 +176,7 @@ def action_uninstall(plat=None, x64=None, ext=None):
 
     if plat == 'windows':
         uninstaller_location = os.path.abspath(os.path.join(folder, 'Uninstall.exe'))
-        command = '{location} /S'.format(location=uninstaller_location)
+        command = [uninstaller_location, '/S']
         process, stdout, stderr = run_command(command)
         check_error(process, stdout, stderr)
         if process.returncode != 0:
@@ -183,7 +189,6 @@ def action_uninstall(plat=None, x64=None, ext=None):
 
     print 'Uninstallation successful!'
     return 0
-
 
 plat = None
 
