@@ -195,7 +195,7 @@ def action_uninstall(plat=None, x64=None, ext=None, **kwargs):
     # add sleep since windows spawns child which is not bound by parent
     # so exiting parent does not exit children as well
     time.sleep(5)
-    
+
     shutil.rmtree(os.path.abspath(folder), True)
     if os.path.exists(folder):
         print 'Uninstallation not successful!'
@@ -222,6 +222,8 @@ action_map = dict(
     download=action_download_package,
     install=action_install,
     run=action_run_flow,
+    run_inside=action_run_flow,
+    run_outside=action_run_flow,
     python_test=None,
     uninstall=action_uninstall
 )
