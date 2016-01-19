@@ -6,6 +6,7 @@ import sys, os, platform, re, urllib, tarfile, shutil, time
 from subprocess import Popen, PIPE
 from optparse import OptionParser
 
+
 class Command(object):
     LS = 'ls'
     LS_CWD = 'ls {cwd}'
@@ -31,10 +32,13 @@ def mkdirr(location):
         os.mkdir(folder, 0777)
 
 
-def padding(s='', pad='\n        '):
+def padding(s='', pad='\n        ', tail=5):
     if s is None or not s.strip():
         return ''
-    return pad + pad.join(s.strip().splitlines())
+    lines = s.strip().splitlines()
+    if len(lines) > tail:
+        return pad + '...' + pad + pad.join(lines[-tail:])
+    return pad + pad.join(lines)
 
 
 default_kwargs = dict(
@@ -61,16 +65,29 @@ def fix_args(plat=None, x64=None, ext=None):
     return plat, x64, ext, folder, location
 
 
+def find_flow_bin(plat=None, x64=None, ext=None, **kwargs):
+    plat, x64, ext, folder, location = fix_args(plat, x64, ext)
+    if plat == 'linux':
+        files = os.listdir(folder)
+        for f in files:
+            if f.lower().find('flow123d') >= 0 and os.path.isdir(os.path.join(folder, f)):
+                return os.path.join(os.getcwd(), folder, f, 'bin', 'flow123d')
+
+    if plat == 'windows':
+        return os.path.join(os.getcwd(), folder, 'bin', 'flow123d.exe')
+    return None
+
+
 def run_command(cmd, **kwargs):
     full_kwargs = default_kwargs.copy()
     full_kwargs.update(kwargs)
 
     if type(cmd) is list:
         full_cmd = cmd
-        shell = True
+        shell = False
     else:
         full_cmd = [cmd.format(**full_kwargs)]
-        shell = False
+        shell = True
     print "Running: {full_cmd}".format(full_cmd=str(full_cmd))
 
     process = Popen(full_cmd, stdout=PIPE, stderr=PIPE, shell=shell)
@@ -80,19 +97,22 @@ def run_command(cmd, **kwargs):
 
 
 def check_error(process, stdout, stderr):
+    stderr = "" if not stderr else stderr
+    stdout = "" if not stdout else stdout
+
     if process.returncode != 0:
-        print 'Error while execution! (exited with {code})'.format(code=process.returncode)
+        print 'Non-zero exit! (exited with {code})'.format(code=process.returncode)
         if stderr.split():
-            print 'Stderr: \n{stderr}'.format(stderr=padding(stderr))
-            if stdout.split():
-                print 'Stdout: \n{stdout}'.format(stdout=padding(stdout))
-            return process.returncode
+            print 'Stderr: {stderr}'.format(stderr=padding(stderr.strip()))
+        if stdout.split():
+            print 'Stdout: {stdout}'.format(stdout=padding(stdout.strip()))
+        return process.returncode
 
     print 'Execution successful!'
     if stderr.split():
-        print 'Stderr: \n{stderr}'.format(stderr=padding(stderr))
+        print 'Stderr: {stderr}'.format(stderr=padding(stderr.strip()))
     if stdout.split():
-        print 'Stdout: \n{stdout}'.format(stdout=padding(stdout))
+        print 'Stdout: {stdout}'.format(stdout=padding(stdout.strip()))
     return 0
 
 
@@ -110,8 +130,9 @@ def action_download_package(server='http://flow.nti.tul.cz/packages', version='0
     )
 
     download_url = "{server}/{version}/flow123d_{version}_{filename}".format(**fmt_object)
+    download_url = "http://bacula.nti.tul.cz/~jan.hybs/public/public_html/Flow123d-1.8.JHy_embedded_python-Linux.tar.gz"
 
-    print 'Downloading file {file} ...'.format(file=download_url)
+    print 'Downloading file {file}'.format(file=download_url)
     filename, headers = urllib.urlretrieve(download_url, location)
     print 'Downloaded', filename, padding(str(headers))
     return 0
@@ -145,17 +166,7 @@ def action_install(plat=None, x64=None, ext=None, **kwargs):
 
 def action_run_flow(plat=None, x64=None, ext=None, **kwargs):
     plat, x64, ext, folder, location = fix_args(plat, x64, ext)
-
-    flow_loc = None
-    if plat == 'linux':
-        files = os.listdir(folder)
-        for f in files:
-            if f.lower().find('flow123d') >= 0 and os.path.isdir(os.path.join(folder, f)):
-                flow_loc = os.path.join(folder, f, 'bin', 'flow123d')
-                break
-
-    if plat == 'windows':
-        flow_loc = os.path.join(folder, 'bin', 'flow123d.exe')
+    flow_loc = find_flow_bin(plat=None, x64=None, ext=None, **kwargs)
 
     # cross-platform run
     if not flow_loc:
@@ -172,6 +183,28 @@ def action_run_flow(plat=None, x64=None, ext=None, **kwargs):
         return 0
     print 'String "{s}" not found in output'.format(s='This is Flow123d')
     return 1
+
+
+def action_python_test(plat=None, x64=None, ext=None, **kwargs):
+    plat, x64, ext, folder, location = fix_args(plat, x64, ext)
+    flow_loc = find_flow_bin(plat=None, x64=None, ext=None, **kwargs)
+    root = os.path.split(os.path.split(flow_loc)[0])[0]
+    test_loc = os.path.join(root, 'tests', '03_transport_small_12d', 'flow_implicit.con')
+    output_loc = os.path.join(root, 'outputt')
+
+    command = [flow_loc, '-s', test_loc, '-o', output_loc]
+    process, stdout, stderr = run_command(command)
+    check_error(process, stdout, stderr)
+    if process.returncode != 0:
+        return process.returncode
+
+    out = stderr + stdout
+    match = re.match(r'.*(profiler_info_[0-9_\.-]+\.log\.json\.txt file generated).*', out.replace('\n', ' '))
+    if not match:
+        print 'Could not find message about generating json file!'
+        return 1
+    print 'String "{msg}" found'.format(msg=match.group(1))
+    return 0
 
 
 def action_uninstall(plat=None, x64=None, ext=None, **kwargs):
@@ -223,7 +256,7 @@ action_map = dict(
     run=action_run_flow,
     run_inside=action_run_flow,
     run_outside=action_run_flow,
-    python_test=None,
+    python_test=action_python_test,
     uninstall=action_uninstall
 )
 
@@ -235,6 +268,7 @@ action_args = dict(
     ext=None
 )
 
+options.actions = 'run,python_test'
 actions = str(options.actions).split(',')
 for action in actions:
     print '=' * 100
@@ -253,3 +287,4 @@ for action in actions:
         exit(result)
 
 exit(0)
+
