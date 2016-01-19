@@ -6,6 +6,8 @@ import sys, os, platform, re, urllib, tarfile, shutil, time
 from subprocess import Popen, PIPE
 from optparse import OptionParser
 
+quited = False
+
 
 class Command(object):
     LS = 'ls'
@@ -32,7 +34,7 @@ def mkdirr(location):
         os.mkdir(folder, 0777)
 
 
-def padding(s='', pad='\n        ', tail=5):
+def padding(s='', pad='\n        ', tail=10):
     if s is None or not s.strip():
         return ''
     lines = s.strip().splitlines()
@@ -71,10 +73,10 @@ def find_flow_bin(plat=None, x64=None, ext=None, **kwargs):
         files = os.listdir(folder)
         for f in files:
             if f.lower().find('flow123d') >= 0 and os.path.isdir(os.path.join(folder, f)):
-                return os.path.join(os.getcwd(), folder, f, 'bin', 'flow123d')
+                return os.path.join(folder, f, 'bin', 'flow123d')
 
     if plat == 'windows':
-        return os.path.join(os.getcwd(), folder, 'bin', 'flow123d.exe')
+        return os.path.join(folder, 'bin', 'flow123d.exe')
     return None
 
 
@@ -101,18 +103,20 @@ def check_error(process, stdout, stderr):
     stdout = "" if not stdout else stdout
 
     if process.returncode != 0:
-        print 'Non-zero exit! (exited with {code})'.format(code=process.returncode)
+        if not quited:
+            print 'Non-zero exit! (exited with {code})'.format(code=process.returncode)
+            if stderr.split():
+                print 'Stderr: {stderr}'.format(stderr=padding(stderr.strip()))
+            if stdout.split():
+                print 'Stdout: {stdout}'.format(stdout=padding(stdout.strip()))
+        return process.returncode
+
+    print 'Execution successful!'
+    if not quited:
         if stderr.split():
             print 'Stderr: {stderr}'.format(stderr=padding(stderr.strip()))
         if stdout.split():
             print 'Stdout: {stdout}'.format(stdout=padding(stdout.strip()))
-        return process.returncode
-
-    print 'Execution successful!'
-    if stderr.split():
-        print 'Stderr: {stderr}'.format(stderr=padding(stderr.strip()))
-    if stdout.split():
-        print 'Stdout: {stdout}'.format(stdout=padding(stdout.strip()))
     return 0
 
 
@@ -130,11 +134,12 @@ def action_download_package(server='http://flow.nti.tul.cz/packages', version='0
     )
 
     download_url = "{server}/{version}/flow123d_{version}_{filename}".format(**fmt_object)
-    download_url = "http://bacula.nti.tul.cz/~jan.hybs/public/public_html/Flow123d-1.8.JHy_embedded_python-Linux.tar.gz"
+    #download_url = "http://bacula.nti.tul.cz/~jan.hybs/public/public_html/Flow123d-1.8.JHy_embedded_python-Linux.tar.gz"
 
     print 'Downloading file {file}'.format(file=download_url)
     filename, headers = urllib.urlretrieve(download_url, location)
-    print 'Downloaded', filename, padding(str(headers))
+    if not quited:
+        print 'Downloaded', filename, padding(str(headers))
     return 0
 
 
@@ -190,7 +195,7 @@ def action_python_test(plat=None, x64=None, ext=None, **kwargs):
     flow_loc = find_flow_bin(plat=None, x64=None, ext=None, **kwargs)
     root = os.path.split(os.path.split(flow_loc)[0])[0]
     test_loc = os.path.join(root, 'tests', '03_transport_small_12d', 'flow_implicit.con')
-    output_loc = os.path.join(root, 'outputt')
+    output_loc = os.path.join(root, 'output')
 
     command = [flow_loc, '-s', test_loc, '-o', output_loc]
     process, stdout, stderr = run_command(command)
@@ -229,6 +234,7 @@ def action_uninstall(plat=None, x64=None, ext=None, **kwargs):
     time.sleep(5)
 
     shutil.rmtree(os.path.abspath(folder), True)
+    shutil.rmtree(os.path.abspath('output'), True)
     if os.path.exists(folder):
         print 'Uninstallation not successful!'
         print os.listdir(folder)
@@ -240,7 +246,7 @@ def action_uninstall(plat=None, x64=None, ext=None, **kwargs):
 
 parser = OptionParser()
 parser.add_option('-m', '--mode', dest='actions', default='download,install,run,python_test,uninstall',
-                  help='Specify what should be done, subset of following (install, run, python_test, uninstall)')
+                  help='Specify what should be done, subset of following (download, install, run, python_test, uninstall)')
 parser.add_option('-p', '--platform', dest='platform', default=None, help='Enforce platform (linux, windows, cygwin)')
 parser.add_option('-k', '--keep', dest='keep', default=True, help='Abort execution on error', action='store_false')
 parser.add_option('-a', '--arch', dest='x64', default=None, help='Enforce bit size (64 or 32)')
@@ -248,8 +254,10 @@ parser.add_option('-s', '--server', dest='server', default='http://flow.nti.tul.
                   help='Specify server from which packages will be downloaded, default value is %default')
 parser.add_option('-v', '--version', dest='version', default='0.0.master',
                   help='Specify web version identifier which will be part of download url, default value is %default')
+parser.add_option('-q', '--quiet', dest='quited', default=False, action="store_true", help='Supress commands output')
 options, args = parser.parse_args()
 
+quited = options.quited
 action_map = dict(
     download=action_download_package,
     install=action_install,
@@ -257,6 +265,7 @@ action_map = dict(
     run_inside=action_run_flow,
     run_outside=action_run_flow,
     python_test=action_python_test,
+    python=action_python_test,
     uninstall=action_uninstall
 )
 
@@ -268,8 +277,9 @@ action_args = dict(
     ext=None
 )
 
-options.actions = 'run,python_test'
 actions = str(options.actions).split(',')
+actions_result = dict(zip(actions, len(actions) * ['skipped']))
+result = 0
 for action in actions:
     print '=' * 100
     print 'Performing action {action:>82}'.format(action=action.upper())
@@ -281,10 +291,14 @@ for action in actions:
         result = 0
         print 'not implemented yet'
     print 'Action {action} exited with {result}\n'.format(action=action.upper(), result=result)
+    actions_result[action] = result
 
     if result != 0 and not options.keep:
         print 'Action {action} failed, exiting script'.format(action=action.upper())
-        exit(result)
+        break
 
-exit(0)
+print '=' * 100
+print '\n'.join(['{:^100s}'.format('{:<20s} {:^10}'.format(k.upper(), str(actions_result[k]).upper())) for k in actions])
+print '=' * 100
+exit(result)
 
